@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OGK</title>
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OGK">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" id="mf">
+<link rel="apple-touch-icon" id="ai">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={theme:{extend:{colors:{ac:'rgb(var(--a) / <alpha-value>)'}}}}</script>
+<script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js"></script>
+<style>:root{--a:52 255 130}html,body{background:#0b0d10;color:#e8eaed;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}</style>
+<style type="text/tailwindcss">
+@layer components{
+.card{@apply bg-[#14171c] border border-white/5 rounded-2xl p-4}
+.inp{@apply w-full bg-[#0b0d10] border border-white/10 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-ac}
+.btn{@apply bg-ac text-black font-semibold rounded-xl px-4 py-3 text-sm flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50}
+.btn2{@apply bg-white/10 text-white font-medium rounded-xl px-4 py-3 text-sm flex items-center justify-center gap-2 active:scale-95 transition}
+}
+</style>
+</head>
+<body class="min-h-screen">
+<header class="sticky top-0 z-20 bg-[#0b0d10]/90 backdrop-blur border-b border-white/5 pt-[env(safe-area-inset-top)]">
+ <div class="max-w-md mx-auto flex items-center justify-between px-4 h-14">
+  <h1 class="text-3xl font-black tracking-tight text-ac" style="text-shadow:0 0 20px rgb(var(--a)/.55)">OGK</h1>
+  <span id="dt" class="text-xs text-white/50"></span>
+ </div>
+</header>
+
+<main class="max-w-md mx-auto px-4 pt-4 pb-28">
+ <section id="v-today"></section>
+
+ <section id="v-add" hidden>
+  <div class="text-xs text-white/50 mb-2">Kategoria</div>
+  <div class="catsel grid grid-cols-4 gap-1 mb-4"></div>
+  <div class="flex gap-2 mb-4" id="modes">
+   <button data-m="photo" class="btn2 flex-1"><i data-lucide="camera" class="w-4 h-4"></i>Zdjęcie</button>
+   <button data-m="text" class="btn2 flex-1"><i data-lucide="type" class="w-4 h-4"></i>Opis</button>
+   <button data-m="man" class="btn2 flex-1"><i data-lucide="pencil" class="w-4 h-4"></i>Ręcznie</button>
+  </div>
+  <div id="p-photo" class="card space-y-3">
+   <p class="text-sm text-white/60">Zrób zdjęcie posiłku lub tabeli wartości odżywczych. Przy gotowym daniu AI zapyta o szczegóły, które wpływają na kalorie.</p>
+   <img id="pv" class="hidden w-full max-h-56 object-cover rounded-xl">
+   <div class="grid grid-cols-2 gap-2">
+    <button class="btn" onclick="$('#f-cam').click()"><i data-lucide="camera" class="w-4 h-4"></i>Aparat</button>
+    <button class="btn2" onclick="$('#f-gal').click()"><i data-lucide="image" class="w-4 h-4"></i>Galeria</button>
+   </div>
+   <input id="f-cam" type="file" accept="image/*" capture="environment" class="hidden">
+   <input id="f-gal" type="file" accept="image/*" class="hidden">
+  </div>
+  <div id="p-text" class="card space-y-3 hidden">
+   <textarea id="t-in" rows="4" class="inp" placeholder="np. 2 jajka sadzone, 2 kromki chleba z masłem"></textarea>
+   <button id="t-go" class="btn w-full"><i data-lucide="sparkles" class="w-4 h-4"></i>Oszacuj makro</button>
+  </div>
+  <div id="p-man" class="card space-y-3 hidden">
+   <input id="m-name" class="inp" placeholder="Nazwa posiłku">
+   <div class="grid grid-cols-2 gap-2">
+    <input id="m-kcal" type="number" inputmode="decimal" class="inp" placeholder="kcal">
+    <input id="m-p" type="number" inputmode="decimal" class="inp" placeholder="Białko (g)">
+    <input id="m-c" type="number" inputmode="decimal" class="inp" placeholder="Węglowodany (g)">
+    <input id="m-f" type="number" inputmode="decimal" class="inp" placeholder="Tłuszcze (g)">
+   </div>
+   <button id="m-go" class="btn w-full"><i data-lucide="check" class="w-4 h-4"></i>Dodaj posiłek</button>
+  </div>
+ </section>
+
+ <section id="v-fav" hidden>
+  <div class="text-xs text-white/50 mb-2">Dodaj do:</div>
+  <div class="catsel grid grid-cols-4 gap-1"></div>
+  <div id="fav-list"></div>
+ </section>
+
+ <section id="v-hist" hidden></section>
+
+ <section id="v-set" hidden class="space-y-3">
+  <div class="card space-y-2">
+   <h2 class="font-semibold">Klucz API Google Gemini</h2>
+   <input id="s-key" type="password" class="inp" placeholder="AIza..." autocomplete="off">
+   <label class="text-xs text-white/50">Model</label>
+   <input id="s-model" class="inp" placeholder="gemini-3.1-flash-lite">
+  </div>
+  <div class="card space-y-2">
+   <h2 class="font-semibold">Dzienne cele</h2>
+   <div class="grid grid-cols-2 gap-2">
+    <label class="text-xs text-white/50">Kalorie<input id="s-kcal" type="number" class="inp mt-1"></label>
+    <label class="text-xs text-white/50">Białko (g)<input id="s-p" type="number" class="inp mt-1"></label>
+    <label class="text-xs text-white/50">Węglowodany (g)<input id="s-c" type="number" class="inp mt-1"></label>
+    <label class="text-xs text-white/50">Tłuszcze (g)<input id="s-f" type="number" class="inp mt-1"></label>
+   </div>
+  </div>
+  <div class="card space-y-2">
+   <h2 class="font-semibold">Cel picia wody (ml)</h2>
+   <input id="s-water" type="number" inputmode="numeric" class="inp">
+  </div>
+  <div class="card space-y-2">
+   <h2 class="font-semibold">Suplementy</h2>
+   <div id="sup-list" class="space-y-1"></div>
+   <div class="flex gap-2"><input id="sup-in" class="inp" placeholder="Nazwa suplementu"><button id="sup-add" class="btn2 shrink-0" aria-label="Dodaj"><i data-lucide="plus" class="w-4 h-4"></i></button></div>
+  </div>
+  <div class="card space-y-2">
+   <h2 class="font-semibold">Język interfejsu</h2>
+   <div class="flex gap-2" id="lg"><button data-lang="pl" class="btn2 flex-1">Polski</button><button data-lang="en" class="btn2 flex-1">English</button></div>
+  </div>
+  <div class="card space-y-2">
+   <h2 class="font-semibold">Kolor akcentu</h2>
+   <div id="sw" class="flex gap-3"></div>
+  </div>
+  <button id="s-save" class="btn w-full"><i data-lucide="check" class="w-4 h-4"></i>Zapisz ustawienia</button>
+  <button id="s-wipe" class="btn2 w-full text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i>Usuń wszystkie dane</button>
+ </section>
+</main>
+
+<nav class="fixed bottom-0 inset-x-0 z-20 bg-[#0b0d10]/95 backdrop-blur border-t border-white/5 pb-[env(safe-area-inset-bottom)]">
+ <div class="max-w-md mx-auto flex">
+  <button data-t="today" class="nv flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px]"><i data-lucide="home" class="w-5 h-5"></i>Dziś</button>
+  <button data-t="add" class="nv flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px]"><i data-lucide="plus" class="w-5 h-5"></i>Dodaj</button>
+  <button data-t="fav" class="nv flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px]"><i data-lucide="star" class="w-5 h-5"></i>Ulubione</button>
+  <button data-t="hist" class="nv flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px]"><i data-lucide="history" class="w-5 h-5"></i>Historia</button>
+  <button data-t="set" class="nv flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px]"><i data-lucide="settings" class="w-5 h-5"></i>Ustawienia</button>
+ </div>
+</nav>
+
+<!-- Klucz API -->
+<div id="m-key" class="hidden fixed inset-0 z-40 bg-[#0b0d10] items-center justify-center p-6">
+ <div class="w-full max-w-sm text-center space-y-4">
+  <div class="text-6xl font-black text-ac" style="text-shadow:0 0 30px rgb(var(--a)/.6)">OGK</div>
+  <p class="text-white/70 text-sm">Wklej klucz API Google Gemini, aby analizować zdjęcia i opisy posiłków. Klucz zostaje tylko w tej przeglądarce.</p>
+  <input id="k-in" type="password" class="inp text-center" placeholder="Klucz API" autocomplete="off">
+  <button id="k-save" class="btn w-full">Zapisz i zacznij</button>
+  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="block text-xs text-ac">Jak zdobyć klucz w Google AI Studio</a>
+  <button id="k-skip" class="text-xs text-white/40">Pomiń, użyję tylko trybu ręcznego</button>
+ </div>
+</div>
+
+<!-- Podgląd szacunków -->
+<div id="m-rev" class="hidden fixed inset-0 z-40 bg-black/70 items-end sm:items-center justify-center">
+ <div class="bg-[#14171c] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[92vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+  <div id="rev-body"></div>
+  <div class="catsel grid grid-cols-4 gap-1 mt-4"></div>
+  <textarea id="rev-extra" rows="3" class="inp mt-3" placeholder="Dodatkowe informacje, np. użyłem 10 g masła i śmietany 18%"></textarea>
+  <div class="grid grid-cols-2 gap-2 mt-3">
+   <button id="rev-re" class="btn2"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Przelicz ponownie</button>
+   <button id="rev-ok" class="btn"><i data-lucide="check" class="w-4 h-4"></i>Zatwierdź i dodaj</button>
+  </div>
+  <button id="rev-x" class="w-full text-center text-xs text-white/40 mt-3 py-1">Anuluj</button>
+ </div>
+</div>
+
+<!-- Własna ilość wody -->
+<div id="m-wc" class="hidden fixed inset-0 z-40 bg-black/70 items-end sm:items-center justify-center">
+ <div class="bg-[#14171c] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[92vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+  <div class="text-lg font-bold">Własna ilość wody</div>
+  <label class="block text-xs text-white/50 mt-4">Ilość (ml)<input id="wc-in" type="number" inputmode="numeric" min="1" class="inp mt-1 text-lg font-semibold"></label>
+  <button id="wc-ok" class="btn w-full mt-4"><i data-lucide="plus" class="w-4 h-4"></i>Dodaj</button>
+  <button id="wc-x" class="w-full text-center text-xs text-white/40 mt-3 py-1">Anuluj</button>
+ </div>
+</div>
+
+<!-- Edycja posiłku -->
+<div id="m-e" class="hidden fixed inset-0 z-40 bg-black/70 items-end sm:items-center justify-center">
+ <div class="bg-[#14171c] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[92vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+  <div class="text-lg font-bold">Edytuj posiłek</div>
+  <label class="block text-xs text-white/50 mt-4">Nazwa posiłku<input id="e-name" class="inp mt-1"></label>
+  <label class="block text-xs text-white/50 mt-3">Kategoria<span class="relative block mt-1"><select id="e-cat" class="inp appearance-none pr-9" style="color-scheme:dark"></select><i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"></i></span></label>
+  <div id="e-wrow" class="hidden mt-3">
+   <label class="block text-xs text-white/50">Waga (g)<input id="e-g" type="number" inputmode="decimal" min="1" class="inp mt-1"></label>
+   <p class="text-[11px] text-white/40 mt-1">Zmiana wagi przelicza kalorie i makro.</p>
+  </div>
+  <div class="grid grid-cols-2 gap-2 mt-3">
+   <label class="text-xs text-white/50">Kalorie<input id="e-kcal" type="number" inputmode="decimal" class="inp mt-1"></label>
+   <label class="text-xs text-white/50">Białko (g)<input id="e-p" type="number" inputmode="decimal" class="inp mt-1"></label>
+   <label class="text-xs text-white/50">Węglowodany (g)<input id="e-c" type="number" inputmode="decimal" class="inp mt-1"></label>
+   <label class="text-xs text-white/50">Tłuszcze (g)<input id="e-f" type="number" inputmode="decimal" class="inp mt-1"></label>
+  </div>
+  <button id="e-ok" class="btn w-full mt-4"><i data-lucide="check" class="w-4 h-4"></i>Zapisz zmiany</button>
+  <button id="e-x" class="w-full text-center text-xs text-white/40 mt-3 py-1">Anuluj</button>
+ </div>
+</div>
+
+<!-- Waga produktu (etykieta) -->
+<div id="m-w" class="hidden fixed inset-0 z-40 bg-black/70 items-end sm:items-center justify-center">
+ <div class="bg-[#14171c] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[92vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+  <div id="w-body"></div>
+  <label class="block text-xs text-white/50 mt-4">Waga (g)<input id="w-g" type="number" inputmode="decimal" min="1" value="100" class="inp mt-1 text-lg font-semibold"></label>
+  <div id="w-q" class="grid grid-cols-4 gap-2 mt-3">
+   <button data-g="50" class="btn2 !px-2">50 g</button><button data-g="100" class="btn2 !px-2">100 g</button><button data-g="150" class="btn2 !px-2">150 g</button><button data-g="200" class="btn2 !px-2">200 g</button>
+  </div>
+  <div class="catsel grid grid-cols-4 gap-1 mt-4"></div>
+  <div id="w-prev" class="card mt-3 !p-3"></div>
+  <button id="w-ok" class="btn w-full mt-3"><i data-lucide="check" class="w-4 h-4"></i>Zatwierdź i dodaj</button>
+  <button id="w-x" class="w-full text-center text-xs text-white/40 mt-3 py-1">Anuluj</button>
+ </div>
+</div>
+
+<div id="busy" class="hidden fixed inset-0 z-50 bg-black/70 items-center justify-center flex-col gap-3">
+ <div class="w-12 h-12 rounded-full border-4 border-white/20 border-t-ac animate-spin"></div>
+ <div id="busy-t" class="text-sm"></div>
+</div>
+<div id="toast" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 max-w-[90%] rounded-xl px-4 py-2.5 text-sm shadow-lg"></div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const R=Math.round,r1=x=>Math.round(x*10)/10;
+const ACC={green:['Neonowy zielony','52 255 130'],blue:['Elektryczny niebieski','56 160 255'],purple:['Fioletowy','178 110 255'],orange:['Pomarańczowy','255 150 40']};
+const DEF={key:'',model:'gemini-3.1-flash-lite',accent:'green',lang:(navigator.language||'pl').toLowerCase().startsWith('pl')?'pl':'en',goals:{kcal:2200,p:140,c:230,f:70},days:{},favs:[],sups:[],supLog:{},water:{},waterGoal:2000};
+let S;try{S={...DEF,...JSON.parse(localStorage.getItem('ogk')||'{}')}}catch(e){S={...DEF}}
+if(S.model==='gemini-2.5-flash')S.model=DEF.model;
+const save=()=>{try{localStorage.setItem('ogk',JSON.stringify(S))}catch(e){toast('Nie można zapisać danych w przeglądarce',1)}};
+const EN={'Dziś':'Today','Dodaj':'Add','Historia':'History','Ustawienia':'Settings','Zdjęcie':'Photo','Opis':'Description','Ręcznie':'Manual',
+'Zrób zdjęcie posiłku lub tabeli wartości odżywczych. Przy gotowym daniu AI zapyta o szczegóły, które wpływają na kalorie.':'Take a photo of your meal or a nutrition label. For a prepared dish, the AI will ask about details that affect calories.',
+'Aparat':'Camera','Galeria':'Gallery','np. 2 jajka sadzone, 2 kromki chleba z masłem':'e.g. 2 fried eggs, 2 slices of bread with butter','Oszacuj makro':'Estimate macros','Nazwa posiłku':'Meal name',
+'Białko (g)':'Protein (g)','Węglowodany (g)':'Carbs (g)','Tłuszcze (g)':'Fat (g)','Dodaj posiłek':'Add meal','Klucz API Google Gemini':'Google Gemini API key','Dzienne cele':'Daily goals','Kalorie':'Calories',
+'Język interfejsu':'Interface language','Kolor akcentu':'Accent color','Zapisz ustawienia':'Save settings','Usuń wszystkie dane':'Delete all data',
+'Wklej klucz API Google Gemini, aby analizować zdjęcia i opisy posiłków. Klucz zostaje tylko w tej przeglądarce.':'Paste your Google Gemini API key to analyze meal photos and descriptions. The key stays only in this browser.',
+'Klucz API':'API key','Zapisz i zacznij':'Save and start','Jak zdobyć klucz w Google AI Studio':'How to get a key in Google AI Studio','Pomiń, użyję tylko trybu ręcznego':'Skip, I will use manual mode only',
+'Dodatkowe informacje, np. użyłem 10 g masła i śmietany 18%':'Extra details, e.g. I used 10 g butter and 18% cream','Przelicz ponownie':'Recalculate','Zatwierdź i dodaj':'Confirm and add','Anuluj':'Cancel',
+'Neonowy zielony':'Neon green','Elektryczny niebieski':'Electric blue','Fioletowy':'Purple','Pomarańczowy':'Orange','Usuń':'Delete',
+'Białko':'Protein','Węglowodany':'Carbs','Tłuszcze':'Fat','Dzisiejsze posiłki':"Today's meals",'Brak posiłków. Dotknij Dodaj, aby zacząć.':'No meals yet. Tap Add to get started.','Historia jest pusta.':'History is empty.',
+'Doprecyzuj, jeśli chcesz:':'Add details if you like:','Zostało':'Remaining','Przekroczono o':'Over by','B':'P','W':'C','T':'F','Posiłek':'Meal','Dodano: ':'Added: ',
+'Nie można zapisać danych w przeglądarce':'Could not save data in the browser','Nie można odczytać zdjęcia':'Could not read the image',
+'Model nie zwrócił odpowiedzi (możliwe zablokowanie treści).':'The model returned no response (content may have been blocked).','Nie udało się odczytać odpowiedzi AI. Spróbuj ponownie.':'Could not parse the AI response. Please try again.',
+'Wystąpił błąd':'Something went wrong','Przeliczam…':'Recalculating…','Analizuję…':'Analyzing…','Wpisz opis posiłku':'Enter a meal description','Podaj kalorie lub makro':'Enter calories or macros',
+'Wpisz dodatkowe informacje':'Enter extra details','Klucz wygląda na zbyt krótki':'The key looks too short','Klucz zapisany':'Key saved','Zapisano':'Saved',
+'Usunąć wszystkie posiłki z historii?':'Delete all meals from history?','Dane usunięte':'Data deleted','Własna':'Custom','Własna ilość wody':'Custom water amount','Ilość (ml)':'Amount (ml)','Podaj poprawną ilość w ml':'Enter a valid amount in ml','Śniadanie':'Breakfast','Obiad':'Lunch','Kolacja':'Dinner','Przekąska':'Snack','Kategoria':'Category','Dodaj do:':'Add to:','Ulubione':'Favorites','Brak ulubionych. Dotknij gwiazdki przy posiłku, aby go zapisać.':'No favorites yet. Tap the star on a meal to save it.','Woda':'Water','Suplementy':'Supplements','Cel picia wody (ml)':'Daily water goal (ml)','Nazwa suplementu':'Supplement name','Zmiana wagi przelicza kalorie i makro.':'Changing the weight recalculates calories and macros.','Dodano do ulubionych':'Added to favorites','Już w ulubionych':'Already in favorites','Już dodano':'Already added','Brak suplementów. Dodaj własne poniżej.':'No supplements yet. Add your own below.','Edytuj':'Edit','Edytuj posiłek':'Edit meal','Zapisz zmiany':'Save changes','Zmiany zapisane':'Changes saved','Ile gramów tego produktu zjadłeś/aś?':'How many grams of this product did you eat?','Wartości na 100 g':'Values per 100 g','Waga (g)':'Weight (g)','Twoja porcja':'Your portion','Podaj poprawną wagę w gramach':'Enter a valid weight in grams','Odpowiedź AI została ucięta (limit 400 tokenów). Spróbuj ponownie lub opisz posiłek krócej.':'The AI response was cut off (400-token limit). Try again or describe the meal more briefly.'};
+const tr=s=>{if(S.lang!=='en')return s;if(EN[s])return EN[s];const i=s.indexOf(': ');return i>0&&EN[s.slice(0,i+2)]?EN[s.slice(0,i+2)]+s.slice(i+2):s};
+function trDOM(){
+ const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentNode.closest('script,style')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT}),ns=[];
+ while(w.nextNode())ns.push(w.currentNode);
+ ns.forEach(n=>{if(n.__pl===undefined)n.__pl=n.data;const k=n.__pl.trim();if(!k)return;const v=S.lang==='en'&&EN[k]?n.__pl.replace(k,EN[k]):n.__pl;if(n.data!==v)n.data=v});
+ document.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el=>{el.__a=el.__a||{};['placeholder','title','aria-label'].forEach(a=>{if(!el.hasAttribute(a))return;if(el.__a[a]===undefined)el.__a[a]=el.getAttribute(a);const o=el.__a[a];el.setAttribute(a,S.lang==='en'&&EN[o]?EN[o]:o)})});
+}
+const dloc=()=>S.lang==='en'?'en-GB':'pl-PL';
+function setLang(l){S.lang=l;save();document.documentElement.lang=l;$('#dt').textContent=new Date().toLocaleDateString(dloc(),{weekday:'long',day:'numeric',month:'long'});trDOM();fillSet()}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dkey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const icons=()=>{window.lucide&&lucide.createIcons();trDOM()};
+const tot=a=>a.reduce((t,e)=>({kcal:t.kcal+e.kcal,p:t.p+e.p,c:t.c+e.c,f:t.f+e.f}),{kcal:0,p:0,c:0,f:0});
+const openM=(id,on=1)=>{const e=$('#'+id);e.classList.toggle('hidden',!on);e.classList.toggle('flex',!!on)};
+const closeM=id=>openM(id,0);
+let tt;function toast(m,bad){const e=$('#toast');e.textContent=tr(m);e.className='fixed bottom-24 left-1/2 -translate-x-1/2 z-50 max-w-[90%] rounded-xl px-4 py-2.5 text-sm shadow-lg '+(bad?'bg-red-500 text-white':'bg-white text-black');clearTimeout(tt);tt=setTimeout(()=>e.classList.add('hidden'),bad?6000:2500)}
+const busy=(on,t='')=>{$('#busy-t').textContent=tr(t);openM('busy',on)};
+
+/* Akcent i ikony PWA */
+function applyAccent(){
+ const rgb=ACC[S.accent][1];document.documentElement.style.setProperty('--a',rgb);
+ const mk=n=>{const c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d');x.fillStyle='#0b0d10';x.fillRect(0,0,n,n);x.fillStyle=`rgb(${rgb.replace(/ /g,',')})`;x.font=`900 ${n*.36}px system-ui,sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText('OGK',n/2,n/2);return c.toDataURL('image/png')};
+ try{$('#ai').href=mk(180);
+ const m={name:'OGK',short_name:'OGK',display:'standalone',background_color:'#0b0d10',theme_color:'#0b0d10',start_url:location.href.split('#')[0],icons:[{src:mk(512),sizes:'512x512',type:'image/png'}]};
+ $('#mf').href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}))}catch(e){}
+}
+
+/* Widoki */
+function mini(l,v,g,u){return `<div><div class="text-[11px] text-white/50">${l}</div><div class="text-sm font-semibold">${R(v)}<span class="text-white/40 font-normal"> / ${g}${u}</span></div><div class="h-1.5 mt-1 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full bg-ac transition-all" style="width:${g?Math.min(100,v/g*100):0}%"></div></div></div>`}
+const CATS=[['breakfast','Śniadanie'],['lunch','Obiad'],['dinner','Kolacja'],['snack','Przekąska']];
+const autoCat=()=>{const h=new Date().getHours();return h<11?'breakfast':h<15?'lunch':h<18?'snack':h<22?'dinner':'snack'};
+let curCat=autoCat();
+function renderCats(){$$('.catsel').forEach(el=>el.innerHTML=CATS.map(([k,l])=>`<button data-cat="${k}" class="rounded-xl py-2 text-xs font-medium transition ${k===curCat?'bg-ac text-black':'bg-white/10 text-white'}">${l}</button>`).join(''));trDOM()}
+function mealsHtml(es,k){
+ if(!es.length)return '<div class="text-sm text-white/40 text-center py-8">Brak posiłków. Dotknij Dodaj, aby zacząć.</div>';
+ return CATS.map(([c,l])=>{const it=es.filter(e=>(e.cat||'snack')===c);if(!it.length)return '';const sum=it.reduce((a,e)=>a+e.kcal,0);
+  return `<div class="flex items-baseline justify-between mt-5 mb-2"><h2 class="font-semibold">${l}</h2><span class="text-xs text-white/50"><b class="text-ac">${R(sum)}</b> kcal</span></div><div class="space-y-2">${it.map(e=>row(e,k)).join('')}</div>`}).join('');
+}
+function waterHtml(){
+ const w=S.water[dkey()]||0,g=S.waterGoal||2000;
+ return `<div class="card mt-3"><div class="flex items-center justify-between"><div class="flex items-center gap-2 font-semibold"><i data-lucide="droplets" class="w-4 h-4 text-ac"></i>Woda</div><div class="text-sm font-semibold">${w}<span class="text-white/40 font-normal"> / ${g} ml</span></div></div><div class="h-2 mt-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full bg-ac transition-all" style="width:${Math.min(100,w/g*100)}%"></div></div><div class="grid grid-cols-3 gap-2 mt-3"><button data-w="-200" class="btn2 !py-2">−200 ml</button><button data-w="200" class="btn !py-2">+200 ml</button><button data-wc class="btn2 !py-2"><i data-lucide="pencil" class="w-4 h-4"></i>Własna</button></div></div>`;
+}
+function supHtml(){
+ if(!S.sups.length)return '';
+ const d=S.supLog[dkey()]||[];
+ return `<div class="card mt-3"><div class="flex items-center gap-2 font-semibold mb-2"><i data-lucide="pill" class="w-4 h-4 text-ac"></i>Suplementy</div><div class="grid grid-cols-2 gap-2">${S.sups.map(x=>`<label class="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2 text-sm"><input type="checkbox" data-sup="${x.id}" ${d.includes(x.id)?'checked':''} class="w-5 h-5 accent-ac shrink-0"><span class="truncate">${esc(x.name)}</span></label>`).join('')}</div></div>`;
+}
+function fillSup(){
+ $('#s-water').value=S.waterGoal||2000;
+ $('#sup-list').innerHTML=S.sups.length?S.sups.map(x=>`<div class="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2 text-sm"><span>${esc(x.name)}</span><button data-supdel="${x.id}" class="text-white/40 active:text-red-400" aria-label="Usuń"><i data-lucide="x" class="w-4 h-4"></i></button></div>`).join(''):'<div class="text-xs text-white/40">Brak suplementów. Dodaj własne poniżej.</div>';
+ icons();
+}
+function addSup(n){if(S.sups.some(x=>x.name.toLowerCase()===n.toLowerCase()))return toast('Już dodano');S.sups.push({id:'s'+Date.now()+Math.random().toString(36).slice(2,5),name:n});save();fillSup()}
+function renderFav(){
+ const gs=CATS.map(([k,l])=>({l,items:S.favs.filter(f=>f.cat===k).sort((a,b)=>(b.n||0)-(a.n||0)||a.name.localeCompare(b.name))})).filter(g=>g.items.length);
+ $('#fav-list').innerHTML=gs.length?gs.map(g=>`<div class="text-sm font-semibold mt-5 mb-2 text-white/70">${g.l}</div><div class="space-y-2">${g.items.map(f=>`<div class="card flex items-center gap-3 !p-3"><div class="flex-1 min-w-0"><div class="font-medium truncate">${esc(f.name)}</div><div class="text-xs text-white/50">${R(f.kcal)} kcal · ${tr('B')} ${r1(f.p)} g · ${tr('W')} ${r1(f.c)} g · ${tr('T')} ${r1(f.f)} g · ×${f.n||0}</div></div><button data-qa="${f.id}" class="btn !px-3 !py-2" aria-label="Dodaj"><i data-lucide="plus" class="w-4 h-4"></i></button><button data-favdel="${f.id}" class="p-2 text-white/40 active:text-red-400" aria-label="Usuń"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join('')}</div>`).join(''):'<div class="text-sm text-white/40 text-center py-12">Brak ulubionych. Dotknij gwiazdki przy posiłku, aby go zapisać.</div>';
+ renderCats();icons();
+}
+function favAdd(id,day){
+ const x=(S.days[day]||[]).find(v=>v.id===id);if(!x)return;
+ if(S.favs.some(f=>f.name.toLowerCase()===x.name.toLowerCase()))return toast('Już w ulubionych');
+ S.favs.push({id:'f'+Date.now(),name:x.name,kcal:x.kcal,p:x.p,c:x.c,f:x.f,cat:x.cat||'snack',g:x.g,b:x.b,n:1});save();toast('Dodano do ulubionych');
+}
+function favUse(id){const f=S.favs.find(v=>v.id===id);if(!f)return;f.n=(f.n||0)+1;addEntry({...f,cat:curCat});toast('Dodano: '+f.name);renderFav()}
+function row(e,day){return `<div class="card flex items-center gap-3 !p-3"><div class="flex-1 min-w-0"><div class="font-medium truncate">${esc(e.name)}</div><div class="text-xs text-white/50">${tr('B')} ${r1(e.p)} g · ${tr('W')} ${r1(e.c)} g · ${tr('T')} ${r1(e.f)} g</div></div><div class="text-right"><div class="font-bold text-ac">${R(e.kcal)}</div><div class="text-[10px] text-white/40">kcal</div></div><button data-fav="${e.id}" data-day="${day}" class="p-2 -mr-2 text-white/40 active:text-yellow-300" aria-label="Ulubione"><i data-lucide="star" class="w-4 h-4"></i></button><button data-edit="${e.id}" data-day="${day}" class="p-2 -mr-2 text-white/40 active:text-ac" aria-label="Edytuj"><i data-lucide="pencil" class="w-4 h-4"></i></button><button data-del="${e.id}" data-day="${day}" class="p-2 text-white/40 active:text-red-400" aria-label="Usuń"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`}
+function renderToday(){
+ const k=dkey(),es=S.days[k]||[],t=tot(es),g=S.goals,left=g.kcal-t.kcal;
+ $('#dt').textContent=new Date().toLocaleDateString(dloc(),{weekday:'long',day:'numeric',month:'long'});
+ $('#v-today').innerHTML=`<div class="card"><div class="text-4xl font-black">${R(t.kcal)}<span class="text-lg text-white/40 font-semibold"> / ${g.kcal} kcal</span></div><div class="text-xs text-white/50 mt-1 mb-3">${left>=0?`${tr('Zostało')} ${R(left)} kcal`:`${tr('Przekroczono o')} ${R(-left)} kcal`}</div><div class="h-3 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full bg-ac transition-all" style="width:${Math.min(100,g.kcal?t.kcal/g.kcal*100:0)}%;box-shadow:0 0 12px rgb(var(--a)/.6)"></div></div></div>
+ <div class="card mt-3 grid grid-cols-3 gap-3">${mini('Białko',t.p,g.p,'g')}${mini('Węglowodany',t.c,g.c,'g')}${mini('Tłuszcze',t.f,g.f,'g')}</div>
+ ${waterHtml()}${supHtml()}${mealsHtml(es,k)}`;
+ icons();
+}
+function renderHist(){
+ const ks=Object.keys(S.days).filter(k=>S.days[k].length).sort().reverse();
+ $('#v-hist').innerHTML=ks.length?`<div class="space-y-2">${ks.map(k=>{const es=S.days[k],t=tot(es),pc=Math.min(100,t.kcal/S.goals.kcal*100);const d=new Date(k+'T12:00:00').toLocaleDateString(dloc(),{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+ return `<details class="card"><summary class="list-none cursor-pointer"><div class="flex justify-between items-baseline"><span class="font-medium">${d}</span><span class="font-bold text-ac">${R(t.kcal)} <span class="text-xs text-white/40 font-normal">/ ${S.goals.kcal} kcal</span></span></div><div class="h-1.5 mt-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full bg-ac rounded-full" style="width:${pc}%"></div></div><div class="text-xs text-white/50 mt-2">${tr('B')} ${R(t.p)} g · ${tr('W')} ${R(t.c)} g · ${tr('T')} ${R(t.f)} g</div></summary><div class="space-y-2 mt-3">${es.map(e=>row(e,k)).join('')}</div></details>`}).join('')}</div>`:'<div class="text-sm text-white/40 text-center py-12">Historia jest pusta.</div>';
+ icons();
+}
+function fillSet(){fillSup();
+ $('#s-key').value=S.key;$$('#lg button').forEach(b=>{const a=b.dataset.lang===S.lang;b.classList.toggle('!bg-ac',a);b.classList.toggle('!text-black',a)});$('#s-model').value=S.model;
+ ['kcal','p','c','f'].forEach(k=>$('#s-'+k).value=S.goals[k]);
+ $('#sw').innerHTML=Object.entries(ACC).map(([k,[n,c]])=>`<button data-ac="${k}" title="${n}" aria-label="${n}" class="w-10 h-10 rounded-full border-2 ${S.accent===k?'border-white':'border-transparent'}" style="background:rgb(${c})"></button>`).join('');
+}
+function go(t){
+ ['today','add','fav','hist','set'].forEach(x=>$('#v-'+x).hidden=x!==t);
+ $$('.nv').forEach(b=>{const a=b.dataset.t===t;b.classList.toggle('text-ac',a);b.classList.toggle('text-white/50',!a)});
+ if(t==='today')renderToday();if(t==='hist')renderHist();if(t==='fav')renderFav();if(t==='set')fillSet();
+ scrollTo(0,0);icons();
+}
+function setMode(m){['photo','text','man'].forEach(x=>$('#p-'+x).classList.toggle('hidden',x!==m));$$('#modes button').forEach(b=>{const a=b.dataset.m===m;b.classList.toggle('!bg-ac',a);b.classList.toggle('!text-black',a)})}
+
+function addEntry(o,day=dkey()){(S.days[day]=S.days[day]||[]).push({id:Date.now()+Math.random().toString(36).slice(2,6),name:o.name,kcal:o.kcal,p:o.p,c:o.c,f:o.f,cat:o.cat||curCat,g:o.g,b:o.b});save()}
+
+/* Gemini */
+const J='JSON only: {"type":"label"|"meal","name":str,"kcal":int,"p":num,"c":num,"f":num,"assumptions":str,"questions":[str]}. p,c,f in grams.';
+const PH='Nutrition label → type "label": values per 100 g (if only per-serving shown, convert using the stated serving weight), name = product name only, assumptions "", questions []. Prepared meal → type "meal", estimate whole portion, assumptions max 15 words, max 3 questions of max 8 words on biggest uncertainties (oil, fat content, weight). '+J;
+const PT='Estimate nutrition of the whole meal, type "meal", max 2 questions. '+J;
+/* maxOutputTokens liczy też tokeny "myślenia" w modelach 2.5 Flash, więc je wyłączamy, by 250 tokenów wystarczyło na JSON */
+const genCfg=()=>{const g={temperature:.1,maxOutputTokens:400,responseMimeType:'application/json'};if(/2\.5-flash/.test(S.model))g.thinkingConfig={thinkingBudget:0};else if(/gemini-3[\w.-]*(flash|lite)/.test(S.model))g.thinkingConfig={thinkingLevel:'minimal'};return g};
+async function gem(parts){
+ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(S.model)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},body:JSON.stringify({contents:[{parts}],generationConfig:genCfg()})});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(j.error?.message||(S.lang==='en'?'HTTP error ':'Błąd HTTP ')+r.status);
+ if(j.candidates?.[0]?.finishReason==='MAX_TOKENS')throw new Error('Odpowiedź AI została ucięta (limit 400 tokenów). Spróbuj ponownie lub opisz posiłek krócej.');
+ const t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+ if(!t)throw new Error('Model nie zwrócił odpowiedzi (możliwe zablokowanie treści).');
+ try{return JSON.parse(t.replace(/```json|```/g,'').trim())}catch(e){throw new Error('Nie udało się odczytać odpowiedzi AI. Spróbuj ponownie.')}
+}
+const norm=o=>({type:o.type==='label'?'label':'meal',name:String(o.name||tr('Posiłek')),kcal:R(+o.kcal||0),p:r1(+o.p||0),c:r1(+o.c||0),f:r1(+o.f||0),assumptions:String(o.assumptions||''),questions:Array.isArray(o.questions)?o.questions.map(String):[]});
+let ctx={},cur=null,wb=null;
+async function analyze(extra){
+ if(!S.key){openM('m-key');return}
+ busy(1,extra?'Przeliczam…':'Analizuję…');
+ try{
+  const parts=[];if(ctx.img)parts.push({inline_data:{mime_type:'image/jpeg',data:ctx.img.split(',')[1]}});
+  let p=(ctx.img?PH:PT+`\nMeal: ${ctx.text}`)+` Text fields in ${S.lang==='en'?'English':'Polish'}.`;
+  if(extra)p+=`\nPrevious: ${JSON.stringify({name:cur.name,kcal:cur.kcal,p:cur.p,c:cur.c,f:cur.f})}\nUser details: ${extra}\nRecalculate.`;
+  parts.push({text:p});
+  cur=norm(await gem(parts));
+  if(cur.type==='label'&&ctx.img){closeM('m-rev');showWeight()}else review();
+ }catch(e){toast(e.message||'Wystąpił błąd',1)}finally{busy(0)}
+}
+const wRes=w=>{const f=w/100,b=wb;return{name:`${b.name} (${w} g)`,kcal:R(b.kcal*f),p:r1(b.p*f),c:r1(b.c*f),f:r1(b.f*f),g:w,b:{kcal:b.kcal,p:b.p,c:b.c,f:b.f}}};
+function wUpd(){
+ const w=+$('#w-g').value;
+ $$('#w-q button').forEach(b=>{const a=+b.dataset.g===w;b.classList.toggle('!bg-ac',a);b.classList.toggle('!text-black',a)});
+ const e=w>0?wRes(w):{kcal:0,p:0,c:0,f:0};
+ $('#w-prev').innerHTML=`<div class="text-xs text-white/50">${tr('Twoja porcja')}</div><div class="text-2xl font-black text-ac">${e.kcal} kcal</div><div class="text-sm text-white/70">${tr('Białko')} ${e.p} g · ${tr('Węglowodany')} ${e.c} g · ${tr('Tłuszcze')} ${e.f} g</div>`;
+}
+function showWeight(){
+ wb=cur;
+ $('#w-body').innerHTML=`<div class="text-lg font-bold">${tr('Ile gramów tego produktu zjadłeś/aś?')}</div><div class="text-sm text-white/80 mt-1">${esc(wb.name)}</div><div class="text-xs text-white/50 mt-2">${tr('Wartości na 100 g')}: ${wb.kcal} kcal · ${tr('Białko')} ${wb.p} g · ${tr('Węglowodany')} ${wb.c} g · ${tr('Tłuszcze')} ${wb.f} g</div>`;
+ $('#w-g').value=100;wUpd();trDOM();openM('m-w');
+}
+function review(){
+ const r=cur;
+ $('#rev-body').innerHTML=`<div class="text-lg font-bold">${esc(r.name)}</div><div class="text-3xl font-black text-ac my-1">${r.kcal} kcal</div><div class="text-sm text-white/70">${tr('Białko')} ${r.p} g · ${tr('Węglowodany')} ${r.c} g · ${tr('Tłuszcze')} ${r.f} g</div>${r.assumptions?`<p class="text-xs text-white/50 mt-3">${esc(r.assumptions)}</p>`:''}${r.questions.length?`<div class="mt-3 text-sm font-semibold">Doprecyzuj, jeśli chcesz:</div><ul class="list-disc pl-5 text-sm text-white/80 space-y-1 mt-1">${r.questions.map(q=>`<li>${esc(q)}</li>`).join('')}</ul>`:''}`;
+ $('#rev-extra').value='';trDOM();openM('m-rev');
+}
+/* Kompresja zdjęcia: max 800 px dłuższego boku, JPEG 75% */
+const MAX_PX=800,JPEG_Q=.75;
+function shrink(file){return new Promise((ok,no)=>{
+ const i=new Image(),u=URL.createObjectURL(file);
+ i.onload=()=>{
+  const k=Math.min(1,MAX_PX/Math.max(i.naturalWidth,i.naturalHeight)),c=document.createElement('canvas'),g=c.getContext('2d');
+  c.width=Math.max(1,Math.round(i.naturalWidth*k));c.height=Math.max(1,Math.round(i.naturalHeight*k));
+  g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.imageSmoothingQuality='high';g.drawImage(i,0,0,c.width,c.height);
+  URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',JPEG_Q))};
+ i.onerror=()=>{URL.revokeObjectURL(u);no(new Error('Nie można odczytać zdjęcia'))};
+ i.src=u})}
+async function onFile(e){
+ const f=e.target.files[0];e.target.value='';if(!f)return;
+ try{const img=await shrink(f);ctx={img};$('#pv').src=img;$('#pv').classList.remove('hidden');await analyze()}catch(err){toast(err.message,1)}
+}
+
+/* Zdarzenia */
+$('#f-cam').onchange=onFile;$('#f-gal').onchange=onFile;
+$('#t-go').onclick=()=>{const v=$('#t-in').value.trim();if(!v)return toast('Wpisz opis posiłku',1);ctx={text:v};analyze()};
+$('#m-go').onclick=()=>{
+ const n=$('#m-name').value.trim()||tr('Posiłek'),v=k=>Math.max(0,+$('#m-'+k).value||0);
+ if(!v('kcal')&&!v('p')&&!v('c')&&!v('f'))return toast('Podaj kalorie lub makro',1);
+ addEntry({name:n,kcal:R(v('kcal')),p:v('p'),c:v('c'),f:v('f')});
+ ['name','kcal','p','c','f'].forEach(k=>$('#m-'+k).value='');toast('Dodano: '+n);go('today');
+};
+$('#rev-re').onclick=()=>{const x=$('#rev-extra').value.trim();if(!x)return toast('Wpisz dodatkowe informacje',1);analyze(x)};
+$('#rev-ok').onclick=()=>{addEntry(cur);closeM('m-rev');$('#t-in').value='';$('#pv').classList.add('hidden');toast('Dodano: '+cur.name);go('today')};
+$('#rev-x').onclick=()=>closeM('m-rev');
+let eid=null,eday=null;
+const ef=()=>(S.days[eday]||[]).find(v=>v.id===eid);
+function openEdit(id,day){
+ const x=(S.days[day]||[]).find(v=>v.id===id);if(!x)return;eid=id;eday=day;
+ $('#e-name').value=x.name;['kcal','p','c','f'].forEach(k=>$('#e-'+k).value=x[k]);
+ $('#e-cat').innerHTML=CATS.map(([k,l])=>`<option value="${k}">${tr(l)}</option>`).join('');$('#e-cat').value=x.cat||'snack';
+ $('#e-wrow').classList.toggle('hidden',!(x.g&&x.b));if(x.g)$('#e-g').value=x.g;
+ openM('m-e');
+}
+$('#e-x').onclick=()=>closeM('m-e');
+$('#e-g').oninput=()=>{
+ const x=ef(),w=+$('#e-g').value;if(!x||!x.b||!(w>0))return;const f=w/100;
+ $('#e-kcal').value=R(x.b.kcal*f);['p','c','f'].forEach(k=>$('#e-'+k).value=r1(x.b[k]*f));
+ $('#e-name').value=$('#e-name').value.replace(/\s\([\d.,]+ g\)$/,` (${w} g)`);
+};
+$('#e-ok').onclick=()=>{
+ const x=ef();if(!x)return closeM('m-e');
+ const v=k=>Math.max(0,+$('#e-'+k).value||0);
+ x.name=$('#e-name').value.trim()||tr('Posiłek');x.cat=$('#e-cat').value;x.kcal=R(v('kcal'));x.p=r1(v('p'));x.c=r1(v('c'));x.f=r1(v('f'));
+ const w=+$('#e-g').value;
+ if(x.g&&x.b&&w>0){x.g=w;x.b={kcal:r1(x.kcal*100/w),p:r1(x.p*100/w),c:r1(x.c*100/w),f:r1(x.f*100/w)}}
+ save();closeM('m-e');$('#v-hist').hidden?renderToday():renderHist();toast('Zmiany zapisane');
+};
+$('#w-g').oninput=wUpd;
+$('#w-x').onclick=()=>closeM('m-w');
+$('#w-ok').onclick=()=>{const w=+$('#w-g').value;if(!(w>0&&w<=5000))return toast('Podaj poprawną wagę w gramach',1);const e=wRes(w);addEntry(e);closeM('m-w');$('#pv').classList.add('hidden');toast('Dodano: '+e.name);go('today')};
+$('#k-save').onclick=()=>{const v=$('#k-in').value.trim();if(v.length<20)return toast('Klucz wygląda na zbyt krótki',1);S.key=v;save();closeM('m-key');toast('Klucz zapisany')};
+$('#k-skip').onclick=()=>closeM('m-key');
+$('#s-save').onclick=()=>{
+ S.key=$('#s-key').value.trim();S.model=$('#s-model').value.trim()||DEF.model;
+ ['kcal','p','c','f'].forEach(k=>S.goals[k]=Math.max(1,+$('#s-'+k).value||DEF.goals[k]));
+ S.waterGoal=Math.max(100,+$('#s-water').value||2000);save();toast('Zapisano');
+};
+$('#s-wipe').onclick=()=>{if(confirm(tr('Usunąć wszystkie posiłki z historii?'))){S.days={};save();toast('Dane usunięte')}};
+document.addEventListener('click',e=>{
+ const d=e.target.closest('[data-del]');
+ if(d){const day=d.dataset.day;S.days[day]=(S.days[day]||[]).filter(x=>x.id!==d.dataset.del);if(!S.days[day].length)delete S.days[day];save();$('#v-hist').hidden?renderToday():renderHist();return}
+ const ct=e.target.closest('[data-cat]');if(ct){curCat=ct.dataset.cat;renderCats();return}
+ const wc=e.target.closest('[data-wc]');if(wc){$('#wc-in').value='';openM('m-wc');setTimeout(()=>$('#wc-in').focus(),50);return}
+ const wt=e.target.closest('[data-w]');if(wt){const k=dkey();S.water[k]=Math.max(0,(S.water[k]||0)+ +wt.dataset.w);save();renderToday();return}
+ const fv=e.target.closest('[data-fav]');if(fv){favAdd(fv.dataset.fav,fv.dataset.day);return}
+ const qa=e.target.closest('[data-qa]');if(qa){favUse(qa.dataset.qa);return}
+ const fd=e.target.closest('[data-favdel]');if(fd){S.favs=S.favs.filter(f=>f.id!==fd.dataset.favdel);save();renderFav();return}
+ const sd=e.target.closest('[data-supdel]');if(sd){S.sups=S.sups.filter(x=>x.id!==sd.dataset.supdel);save();fillSup();return}
+ const ed=e.target.closest('[data-edit]');if(ed){openEdit(ed.dataset.edit,ed.dataset.day);return}
+ const a=e.target.closest('[data-ac]');if(a){S.accent=a.dataset.ac;save();applyAccent();fillSet()}
+ const q=e.target.closest('#w-q [data-g]');if(q){$('#w-g').value=q.dataset.g;wUpd();return}
+ const lg=e.target.closest('[data-lang]');if(lg){setLang(lg.dataset.lang);return}
+ const t=e.target.closest('[data-t]');if(t)go(t.dataset.t);
+ const m=e.target.closest('#modes [data-m]');if(m)setMode(m.dataset.m);
+});
+
+$('#wc-x').onclick=()=>closeM('m-wc');
+$('#wc-ok').onclick=()=>{const v=Math.round(+$('#wc-in').value);if(!(v>0&&v<=5000))return toast('Podaj poprawną ilość w ml',1);const k=dkey();S.water[k]=(S.water[k]||0)+v;save();closeM('m-wc');renderToday();toast('+'+v+' ml')};
+$('#wc-in').onkeydown=e=>{if(e.key==='Enter')$('#wc-ok').click()};
+$('#sup-add').onclick=()=>{const v=$('#sup-in').value.trim();if(!v)return;addSup(v);$('#sup-in').value=''};
+document.addEventListener('change',e=>{const c=e.target.closest('[data-sup]');if(!c)return;const k=dkey(),a=S.supLog[k]||[];S.supLog[k]=c.checked?[...new Set([...a,c.dataset.sup])]:a.filter(x=>x!==c.dataset.sup);save()});
+
+/* Start, reset o północy */
+let cd=dkey();
+const tick=()=>{if(cd!==dkey()){cd=dkey();if(!$('#v-today').hidden)renderToday()}};
+setInterval(tick,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+document.documentElement.lang=S.lang;applyAccent();renderCats();setMode('photo');go('today');
+if(!S.key)openM('m-key');
+</script>
+</body>
+</html>
